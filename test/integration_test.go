@@ -126,10 +126,7 @@ func (s *GalexieTestSuite) TestFindLatestLedgerSequence() {
 		s.Run(tc.name, func() {
 			var mutate func(*toml.Tree)
 			if s.storageType == "Filesystem" {
-				dir := filepath.Join(s.testTempDir, "fll-"+tc.name)
-				if tc.fsSubdir != "" {
-					dir = filepath.Join(dir, tc.fsSubdir)
-				}
+				dir := filepath.Join(s.testTempDir, "fll-"+tc.name, tc.fsSubdir)
 				require.NoError(os.MkdirAll(dir, 0755))
 				if tc.fsSlash {
 					dir += "/"
