@@ -3,6 +3,7 @@ package galexie
 import (
 	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -108,6 +109,7 @@ func TestFindLatestLedgerSequenceFilesystem(t *testing.T) {
 			dir := t.TempDir()
 			if tc.subdir != "" {
 				dir = filepath.Join(dir, tc.subdir)
+				require.NoError(t, os.MkdirAll(dir, 0755))
 			}
 			if tc.slash {
 				dir += "/"

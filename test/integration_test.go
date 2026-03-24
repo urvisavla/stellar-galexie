@@ -53,7 +53,7 @@ const (
 // TestGalexieGCSTestSuite runs tests with GCS backend
 func TestGalexieGCSTestSuite(t *testing.T) {
 	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
-		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
+//		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
 	}
 
 	galexieGCSSuite := &GalexieTestSuite{
@@ -65,7 +65,7 @@ func TestGalexieGCSTestSuite(t *testing.T) {
 // TestGalexieS3TestSuite runs tests with S3 backend
 func TestGalexieS3TestSuite(t *testing.T) {
 	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
-		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
+	//	t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
 	}
 
 	galexieS3Suite := &GalexieTestSuite{
@@ -269,12 +269,11 @@ func (s *GalexieTestSuite) TestAppendUnbounded() {
 	rootCmd.SetArgs([]string{"append", "--start", "10", "--config-file", s.tempConfigFile})
 
 	appendCtx, cancel := context.WithCancel(s.ctx)
+	var cmdErr error
 	syn := make(chan struct{})
-	defer func() { <-syn }()
-	defer cancel()
 	go func() {
 		defer close(syn)
-		require.NoError(rootCmd.ExecuteContext(appendCtx))
+		cmdErr = rootCmd.ExecuteContext(appendCtx)
 	}()
 
 	require.EventuallyWithT(func(c *assert.CollectT) {
@@ -284,6 +283,7 @@ func (s *GalexieTestSuite) TestAppendUnbounded() {
 
 	cancel()
 	<-syn
+	require.NoError(cmdErr)
 
 	logOutput := logBuf.String()
 	s.T().Log(logOutput)
