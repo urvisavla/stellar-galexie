@@ -1120,9 +1120,9 @@ func (s *GalexieTestSuite) ensureBucket(t *testing.T, bucketPath string) {
 		s.gcsServer.CreateBucket(bucket)
 	case "S3":
 		s.createLocalStackBucketByName(t, bucket)
-	}
 	default:
 		t.Fatalf("invalid storage type: %s", s.storageType)
+	}
 }
 
 func (s *GalexieTestSuite) createLocalStackBucket(t *testing.T) {
