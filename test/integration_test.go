@@ -218,19 +218,25 @@ func (s *GalexieTestSuite) TestAppend() {
 	lastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFF9--6.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 
-	// now run an append on an overlapping range, it will resume past existing ledgers
+	// Run bounded append on an overlapping range and capture log output.
+	// Append should detect ledger 7 as the last and resume from 8.
+	var logBuf bytes.Buffer
+	galexie.SetLogOutput(&logBuf)
+	defer galexie.SetLogOutput(os.Stderr)
+
+	rootCmd = cmd.DefineCommands()
 	rootCmd.SetArgs([]string{"append", "--start", "6", "--end", "9", "--config-file", s.tempConfigFile})
-	var errWriter bytes.Buffer
-	var outWriter bytes.Buffer
-	rootCmd.SetErr(&errWriter)
-	rootCmd.SetOut(&outWriter)
 	err = rootCmd.ExecuteContext(s.ctx)
 	require.NoError(err)
 
-	output := outWriter.String()
-	errOutput := errWriter.String()
-	s.T().Log(output)
-	s.T().Log(errOutput)
+	logOutput := logBuf.String()
+	s.T().Log(logOutput)
+
+	// Verify the resume detection via log output
+	require.Contains(logOutput, "will resume at later start ledger of 8",
+		"append should detect ledger 7 as last and resume from 8")
+	require.Contains(logOutput, "start=8, end=9",
+		"final computed range should start at 8")
 
 	// check that the file was not modified
 	newLastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFF9--6.xdr."+compressxdr.DefaultCompressor.Name())
@@ -244,12 +250,23 @@ func (s *GalexieTestSuite) TestAppend() {
 func (s *GalexieTestSuite) TestAppendUnbounded() {
 	require := s.Require()
 
+	// Pre-populate ledgers 10-12 so FindLatestLedgerSequence has data to detect.
 	rootCmd := cmd.DefineCommands()
+	rootCmd.SetArgs([]string{"scan-and-fill", "--start", "10", "--end", "12", "--config-file", s.tempConfigFile})
+	err := rootCmd.ExecuteContext(s.ctx)
+	require.NoError(err)
+
+	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
+	require.NoError(err)
+
+	// Run unbounded append and capture log output.
+	// Should detect ledger 12 as the last and resume from 13.
+	var logBuf bytes.Buffer
+	galexie.SetLogOutput(&logBuf)
+	defer galexie.SetLogOutput(os.Stderr)
+
+	rootCmd = cmd.DefineCommands()
 	rootCmd.SetArgs([]string{"append", "--start", "10", "--config-file", s.tempConfigFile})
-	var errWriter bytes.Buffer
-	var outWriter bytes.Buffer
-	rootCmd.SetErr(&errWriter)
-	rootCmd.SetOut(&outWriter)
 
 	appendCtx, cancel := context.WithCancel(s.ctx)
 	syn := make(chan struct{})
@@ -258,21 +275,23 @@ func (s *GalexieTestSuite) TestAppendUnbounded() {
 	go func() {
 		defer close(syn)
 		require.NoError(rootCmd.ExecuteContext(appendCtx))
-		output := outWriter.String()
-		errOutput := errWriter.String()
-		s.T().Log(output)
-		s.T().Log(errOutput)
 	}()
 
-	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
-	require.NoError(err)
-
 	require.EventuallyWithT(func(c *assert.CollectT) {
-		// this checks every 50ms up to 180s total
-		assert := assert.New(c)
-		_, err = datastore.GetFile(s.ctx, "FFFFFFF5--10-19/FFFFFFF0--15.xdr."+compressxdr.DefaultCompressor.Name())
-		assert.NoError(err)
+		_, getErr := datastore.GetFile(s.ctx, "FFFFFFF5--10-19/FFFFFFF0--15.xdr."+compressxdr.DefaultCompressor.Name())
+		assert.NoError(c, getErr)
 	}, 180*time.Second, 50*time.Millisecond, "append unbounded did not work")
+
+	cancel()
+	<-syn
+
+	logOutput := logBuf.String()
+	s.T().Log(logOutput)
+
+	require.Contains(logOutput, "will resume at later start ledger of 13",
+		"append should detect ledger 12 as last and resume from 13")
+	require.Contains(logOutput, "start=13, end=0",
+		"final computed range should start at 13")
 }
 
 func (s *GalexieTestSuite) TestAppendUnboundedSequenceNumber2() {
