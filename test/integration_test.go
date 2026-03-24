@@ -53,7 +53,7 @@ const (
 // TestGalexieGCSTestSuite runs tests with GCS backend
 func TestGalexieGCSTestSuite(t *testing.T) {
 	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
-//		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
+		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
 	}
 
 	galexieGCSSuite := &GalexieTestSuite{
@@ -65,7 +65,7 @@ func TestGalexieGCSTestSuite(t *testing.T) {
 // TestGalexieS3TestSuite runs tests with S3 backend
 func TestGalexieS3TestSuite(t *testing.T) {
 	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
-	//	t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
+		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
 	}
 
 	galexieS3Suite := &GalexieTestSuite{
